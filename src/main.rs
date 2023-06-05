@@ -1,18 +1,18 @@
-use std::thread;
 use std::cmp::Ordering::Equal;
 use rand::Rng;
 
 fn main() {
+    let mut rng = rand::thread_rng();
+
     let mut horde:Vec<Creature> = vec![];
-    let death_rate = 1000; //per epoch
-    let epochs = 10000;
+    let death_rate = 700; //per epoch
    
-    for _ in 0..10000 {
+    for _ in 0..1000 {
         horde.push(Creature{in_size:2,out_size:1,..Default::default()});
     }
     
     let mut count = 0;
-    while horde[0].fitness < -0.03 {
+    while horde[0].fitness < -0.2 {
 
         for mut creature in &mut horde {
             let mut fitness = 0.0;
@@ -23,7 +23,7 @@ fn main() {
             out = creature.feed(vec![0.0,1.0]);
             fitness -= dist(out,vec![1.0]);
             out = creature.feed(vec![1.0,1.0]);
-            fitness -= dist(out,vec![0.0]);
+            fitness -= dist(out,vec![1.0]);
             creature.fitness = fitness;
         }
 
@@ -39,14 +39,31 @@ fn main() {
         println!("best for 1,0: {:?}", horde[0].feed(vec![1.0,0.0]));
         println!("best for 1,1: {:?}", horde[0].feed(vec![1.0,1.0]));
 
+        let mut species_culled = vec![];
+
         for _ in 0..death_rate {
-            horde.pop();
+            species_culled.push(horde.pop().unwrap());
         }
-        let mut rng = rand::thread_rng();
         let hlen = horde.len();
         for _ in 0..death_rate {
-            horde.push(horde[rng.gen_range(0..(hlen/3)*2)].new_variant());
+            horde.push(horde[rng.gen_range(0..hlen/3)].new_variant());
         }
+
+       // species_culled.sort_by_key(|s| s.species);
+
+       // for creature in species_culled {
+       //     let mut found = false;
+       //     for i in 0..hlen {
+       //         if horde[i].species == creature.species {
+       //             horde.push(horde[i].new_variant());
+       //             found = true;
+       //             break;
+       //         }
+       //     }
+       //     if !found {
+       //         horde.push(creature.new_variant());
+       //     }
+       // }
         count += 1;
         println!("count: {}",count)
     }
@@ -89,6 +106,7 @@ pub struct Creature {
     out_size: usize,
     mutate_speed: f32,
     fitness: f32,
+    species: i8,
 }
 
 impl Default for Creature {
@@ -100,8 +118,9 @@ impl Default for Creature {
             weights: vec![],//temp until overridden
             in_size: 2,
             out_size: 1,
-            mutate_speed: 3.0,
+            mutate_speed: 4.0,
             fitness: -9999.9999,
+            species: rng.gen_range(0..32),
         };
         c.new_weights();
         c
@@ -126,7 +145,7 @@ impl Creature {
         let number = rng.gen_range(0..100);
         variant.mutate_node();
         match number {
-            //1..=10 => variant.add_random_node(),
+            1..=10 => variant.add_random_node(),
             //11..=15 => variant.remove_random_node(),
             98 => variant.add_random_layer(),
             90..=97 => variant.new_weights(),
@@ -134,6 +153,14 @@ impl Creature {
             _ => variant.mutate_node(),
         }
         variant
+    }
+
+    pub fn brain_size(&self) -> usize {
+        let mut size: usize = 0;
+        for layer in &self.brain {
+            size += layer.len();
+        }
+        size
     }
 
     fn mutate_node(&mut self) {
@@ -145,14 +172,14 @@ impl Creature {
         if !modify_brain {
             nodes = &self.weights;
         }
-        let mut node = self.brain[layer_i][node_i];
+        let mut node = nodes[layer_i][node_i];
         if rng.gen_range(0.0..1.0) >= 0.5 {
             node += node * rng.gen_range(0.0..self.mutate_speed);
         } else {
             node -= node * rng.gen_range(0.0..self.mutate_speed);
         }
         self.brain[layer_i][node_i] = node;
-        let change_more = rng.gen_range(0.0..1.0) >= 0.1;
+        let change_more = rng.gen_range(0.0..1.0) >= 0.05;
         if change_more { self.mutate_node();}
     }
 
@@ -170,7 +197,15 @@ impl Creature {
     }
 
     fn add_random_node(&mut self) {
-        
+        let mut rng = rand::thread_rng();
+        let layer_i = rng.gen_range(0..self.brain.len());
+        let node_i = rng.gen_range(0..self.brain[layer_i].len());
+        self.brain[layer_i].insert(
+            node_i,rng.gen_range(-self.mutate_speed..self.mutate_speed)
+        );
+        let change_more = rng.gen_range(0.0..1.0) >= 0.1;
+        if change_more { self.add_random_node();}
+        self.new_weights();
     }
 
     fn remove_random_node(&mut self) {
