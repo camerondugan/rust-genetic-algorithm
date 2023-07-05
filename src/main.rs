@@ -22,7 +22,7 @@ impl Default for Creature {
             in_size: 2,
             out_size: 1,
             mutate_speed: 3.0,
-            fitness: -9999.9999,
+            fitness: f32::MIN,
         };
         c.fix_weights();
         c
@@ -32,8 +32,8 @@ impl Default for Creature {
 fn main() {
     let mut rng = rand::thread_rng();
     let mut horde:Vec<Creature> = vec![];
-    let death_rate = 0.7; //per epoch
-    let horde_size = 1000;
+    let death_rate = 0.8; //per epoch
+    let horde_size = 100;
     let death_amount = (death_rate*(horde_size as f32)) as i32; //per epoch
    
     for _ in 0..horde_size {
@@ -42,7 +42,7 @@ fn main() {
     
     futures::executor::block_on(async {
         let mut count = 0;
-        while horde[0].fitness < 100.0 {
+        while horde[0].fitness < 0.0 {
 
             let mut example_input = vec![];
             let mut example_output = vec![];
@@ -110,6 +110,10 @@ fn dist(v1:&Vec<f32>, v2:&Vec<f32>) -> f32 {
     distance
 }
 
+fn ReLu(x:f32) -> f32 {
+    if x>=0.0 {x} else {0.0}
+}
+
 fn convolution(layer1:Vec<f32>, weights:&Vec<f32>, layer2:&Vec<f32>) -> Vec<f32> {
     let mut conv_output:Vec<f32> = Vec::with_capacity(layer2.len());
     
@@ -120,7 +124,7 @@ fn convolution(layer1:Vec<f32>, weights:&Vec<f32>, layer2:&Vec<f32>) -> Vec<f32>
         for i in 0..l1_len {
             sum += weights[xi*l1_len+i]*layer1[i];
         }
-        conv_output.push(sum);
+        conv_output.push(ReLu(sum));
         xi+=1;
     }
 
