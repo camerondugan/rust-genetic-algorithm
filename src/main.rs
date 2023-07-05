@@ -110,8 +110,14 @@ fn dist(v1:&Vec<f32>, v2:&Vec<f32>) -> f32 {
     distance
 }
 
-fn ReLu(x:f32) -> f32 {
+// Works best (that I've tried) for xor
+fn re_lu(x:f32) -> f32 {
     if x>=0.0 {x} else {0.0}
+}
+
+// For other applications
+fn leaky_re_lu(x:f32) -> f32 {
+    if x>=0.0 {x} else {0.01*x}
 }
 
 fn convolution(layer1:Vec<f32>, weights:&Vec<f32>, layer2:&Vec<f32>) -> Vec<f32> {
@@ -124,7 +130,8 @@ fn convolution(layer1:Vec<f32>, weights:&Vec<f32>, layer2:&Vec<f32>) -> Vec<f32>
         for i in 0..l1_len {
             sum += weights[xi*l1_len+i]*layer1[i];
         }
-        conv_output.push(ReLu(sum));
+        //conv_output.push(leaky_re_lu(sum));
+        conv_output.push(re_lu(sum));
         xi+=1;
     }
 
